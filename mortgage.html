@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulačka hypotéky</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            color: #222;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .slider-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .info {
+            margin-top: 6px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #1976d2;
+            color: white;
+        }
+
+        button:hover {
+            background: #1565c0;
+        }
+
+        #result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f3f3f3;
+            border-radius: 8px;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 12px;
+        }
+
+        .result-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-value {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
+        }
+
+        .main-result {
+            font-size: 22px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .status-ok {
+            background: #dff2df;
+            color: #176b17;
+        }
+
+        .status-warning {
+            background: #fff1cc;
+            color: #765900;
+        }
+
+        .status-error {
+            background: #ffdede;
+            color: #9b0000;
+        }
+
+        .small {
+            font-size: 13px;
+            color: #666;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+
+        .metric-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .help {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 17px;
+            height: 17px;
+
+            border-radius: 50%;
+            background: #777;
+            color: white;
+
+            font-size: 11px;
+            font-weight: bold;
+
+            cursor: help;
+        }
+
+        .tooltip {
+            position: absolute;
+
+            left: 50%;
+            bottom: calc(100% + 10px);
+
+            transform: translateX(-50%);
+
+            width: 280px;
+
+            padding: 12px;
+
+            background: #222;
+            color: white;
+
+            border-radius: 6px;
+
+            font-size: 13px;
+            font-weight: normal;
+            line-height: 1.45;
+
+            text-align: left;
+
+            visibility: hidden;
+            opacity: 0;
+
+            transition: opacity 0.15s ease;
+
+            z-index: 100;
+        }
+
+        .tooltip::after {
+            content: "";
+
+            position: absolute;
+
+            top: 100%;
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            border-width: 6px;
+            border-style: solid;
+            border-color: #222 transparent transparent transparent;
+        }
+
+        .help:hover .tooltip,
+        .help:focus .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Kalkulačka hypotéky</h1>
+
+<form id="mortgageForm">
+
+    <div class="field">
+        <label for="amount">Výše hypotéky (Kč)</label>
+
+        <input
+            type="text"
+            id="amount"
+            value="5 200 000"
+            inputmode="numeric"
+            required
+        >
+    </div>
+
+    <div class="field">
+        <label for="propertyValue">Hodnota nemovitosti (Kč)</label>
+
+        <input
+            type="text"
+            id="propertyValue"
+            value="6 500 000"
+            inputmode="numeric"
+            required
+        >
+
+        <div class="info">
+            Z této hodnoty se vypočítá LTV.
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="purpose">Účel hypotéky</label>
+
+        <select id="purpose">
+            <option value="own">Vlastní bydlení</option>
+            <option value="investment">Investiční nemovitost</option>
+        </select>
+
+        <div class="info" id="purposeInfo"></div>
+    </div>
+
+    <div class="field">
+        <label for="age">Věk nejstaršího žadatele</label>
+
+        <input
+            type="number"
+            id="age"
+            value="30"
+            min="18"
+            max="100"
+            required
+        >
+
+        <div class="info" id="ageInfo"></div>
+    </div>
+
+    <div class="field">
+        <label for="interest">Úroková sazba (%)</label>
+
+        <input
+            type="number"
+            id="interest"
+            value="4.5"
+            min="0"
+            step="0.01"
+            required
+        >
+    </div>
+
+    <div class="field">
+        <label for="years">Doba splácení</label>
+
+        <input
+            type="range"
+            id="years"
+            min="1"
+            max="35"
+            value="30"
+            step="1"
+        >
+
+        <div class="slider-value">
+            <span id="yearsValue">30</span> let
+        </div>
+
+        <div class="info" id="yearsInfo"></div>
+    </div>
+
+    <div class="field">
+        <label for="income">
+            Čistý měsíční příjem domácnosti (Kč)
+        </label>
+
+        <input
+            type="text"
+            id="income"
+            value="100 000"
+            inputmode="numeric"
+            required
+        >
+    </div>
+
+    <div class="field">
+        <label for="existingDebt">
+            Stávající zadlužení (Kč)
+        </label>
+
+        <input
+            type="text"
+            id="existingDebt"
+            value="0"
+            inputmode="numeric"
+        >
+
+        <div class="info">
+            Zůstatek ostatních úvěrů, hypoték apod.
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="existingPayments">
+            Stávající měsíční splátky (Kč)
+        </label>
+
+        <input
+            type="text"
+            id="existingPayments"
+            value="0"
+            inputmode="numeric"
+        >
+
+        <div class="info">
+            Splátky ostatních úvěrů a hypoték.
+        </div>
+    </div>
+
+    <button type="submit">
+        Vypočítat
+    </button>
+
+</form>
+
+
+<div id="result">
+
+    <div class="result-row">
+        <span>Výše hypotéky:</span>
+        <span class="result-value" id="resultAmount"></span>
+    </div>
+
+    <div class="result-row">
+        <span>Hodnota nemovitosti:</span>
+        <span class="result-value" id="resultProperty"></span>
+    </div>
+
+    <div class="result-row">
+        <span>Věk žadatele:</span>
+        <span class="result-value" id="resultAge"></span>
+    </div>
+
+    <div class="result-row">
+        <span>Doba splácení:</span>
+        <span class="result-value" id="resultYears"></span>
+    </div>
+
+    <div class="result-row">
+        <span>Měsíční splátka hypotéky:</span>
+        <span class="result-value" id="resultPayment"></span>
+    </div>
+
+
+    <div class="section">
+
+        <div class="result-row">
+            <span>
+                <span class="metric-label">
+                    LTV
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            <strong>LTV (Loan-to-Value)</strong><br>
+                            Poměr výše hypotéky k hodnotě zastavované nemovitosti.
+                            Například LTV 80 % znamená, že hypotéka tvoří 80 %
+                            hodnoty nemovitosti.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value" id="resultLtv"></span>
+        </div>
+
+
+        <div class="result-row">
+            <span>
+                Max. doporučené
+                <span class="metric-label">
+                    LTV
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            Maximální doporučené LTV podle pravidel ČNB.
+                            U vlastního bydlení je standardně 80 %,
+                            u žadatelů mladších 36 let může být až 90 %.
+                            U investičních hypoték je doporučený limit 70 %.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value" id="resultMaxLtv"></span>
+        </div>
+
+
+        <div class="result-row">
+            <span>
+                <span class="metric-label">
+                    DTI
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            <strong>DTI (Debt-to-Income)</strong><br>
+                            Poměr celkového zadlužení žadatele k jeho
+                            čistému ročnímu příjmu.
+                            Například DTI 8 znamená dluh ve výši
+                            osminásobku ročního čistého příjmu.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value" id="resultDti"></span>
+        </div>
+
+
+        <div class="result-row">
+            <span>
+                Relevantní
+                <span class="metric-label">
+                    DTI
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            Hranice DTI používaná v kalkulačce pro posouzení
+                            zadlužení. U běžných hypoték není aktuálně
+                            závazným limitem ČNB, ale hodnota nad 8×
+                            představuje zvýšenou obezřetnost.
+                            U investičních hypoték je doporučená hranice 7×.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value" id="resultMaxDti"></span>
+        </div>
+
+
+        <div class="result-row">
+            <span>
+                <span class="metric-label">
+                    DSTI
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            <strong>DSTI (Debt Service-to-Income)</strong><br>
+                            Poměr všech měsíčních splátek dluhů
+                            k čistému měsíčnímu příjmu domácnosti.
+                            Například DSTI 40 % znamená, že splátky
+                            představují 40 % čistého měsíčního příjmu.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value" id="resultDsti"></span>
+        </div>
+
+
+        <div class="result-row">
+            <span>
+                Obezřetnostní
+                <span class="metric-label">
+                    DSTI
+                    <span class="help" tabindex="0">
+                        ?
+                        <span class="tooltip">
+                            Hranice 40 % představuje podle aktuálního
+                            doporučení ČNB úroveň zvýšené obezřetnosti.
+                            Nejde u běžné hypotéky o automatický zákaz.
+                        </span>
+                    </span>
+                </span>:
+            </span>
+
+            <span class="result-value">40 %</span>
+        </div>
+
+    </div>
+
+
+    <div class="section">
+
+        <div class="result-row">
+            <span>Max. hypotéka podle LTV:</span>
+            <span class="result-value" id="maxByLtv"></span>
+        </div>
+
+        <div class="result-row">
+            <span>Max. hypotéka podle DTI:</span>
+            <span class="result-value" id="maxByDti"></span>
+        </div>
+
+        <div class="result-row">
+            <span>Max. hypotéka podle DSTI:</span>
+            <span class="result-value" id="maxByDsti"></span>
+        </div>
+
+    </div>
+
+
+    <div id="status" class="status"></div>
+
+    <div class="small">
+        Výpočet je orientační. U vlastního bydlení nejsou DTI a DSTI
+        aktuálně závaznými limity ČNB. Banky je však mohou používat
+        v rámci vlastního posouzení úvěruschopnosti.
+    </div>
+
+</div>
+
+
+<script>
+
+    // ============================================================
+    // Pomocné funkce
+    // ============================================================
+
+    function formatNumber(value) {
+        return Math.round(value)
+            .toLocaleString("cs-CZ")
+            .replace(/\u00A0/g, " ");
+    }
+
+
+    function parseAmount(value) {
+
+        if (!value) {
+            return 0;
+        }
+
+        return Number(
+            value
+                .replace(/\s/g, "")
+                .replace(/\u00A0/g, "")
+                .replace(",", ".")
+        );
+    }
+
+
+    function calculateMortgage(principal, annualInterestRate, years) {
+
+        const monthlyRate = annualInterestRate / 100 / 12;
+        const numberOfPayments = years * 12;
+
+        if (monthlyRate === 0) {
+            return principal / numberOfPayments;
+        }
+
+        return principal *
+            (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+            (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    }
+
+
+    // ============================================================
+    // Automatické formátování částek
+    // ============================================================
+
+    function setupMoneyInput(id) {
+
+        const input = document.getElementById(id);
+
+        input.addEventListener("input", function () {
+
+            let numbersOnly = this.value.replace(/\D/g, "");
+
+            if (numbersOnly === "") {
+                this.value = "";
+                return;
+            }
+
+            this.value = Number(numbersOnly)
+                .toLocaleString("cs-CZ");
+        });
+    }
+
+
+    setupMoneyInput("amount");
+    setupMoneyInput("propertyValue");
+    setupMoneyInput("income");
+    setupMoneyInput("existingDebt");
+    setupMoneyInput("existingPayments");
+
+
+    // ============================================================
+    // Věk / splatnost
+    // ============================================================
+
+    const ageInput = document.getElementById("age");
+    const yearsInput = document.getElementById("years");
+    const yearsValue = document.getElementById("yearsValue");
+    const ageInfo = document.getElementById("ageInfo");
+    const yearsInfo = document.getElementById("yearsInfo");
+
+
+    function updateAgeRules() {
+
+        const age = Number(ageInput.value);
+
+        if (!age || age < 18) {
+            return;
+        }
+
+        /*
+         * Pro účely této kalkulačky:
+         * - < 36 let = možnost 90 % LTV u vlastního bydlení
+         * - 36+ = maximálně 80 % LTV
+         *
+         * Splatnost zde necháváme až 35 let,
+         * protože aktuální pravidla ČNB nestanovují
+         * jednoduchý věkový limit 29 let, jak bylo
+         * v předchozí verzi.
+         */
+
+        if (age < 36) {
+
+            ageInfo.textContent =
+                "Do 36 let: u vlastního bydlení lze využít LTV až 90 %.";
+
+        } else {
+
+            ageInfo.textContent =
+                "36 let a více: standardní limit LTV pro vlastní bydlení je 80 %.";
+        }
+
+        yearsValue.textContent = yearsInput.value;
+    }
+
+
+    ageInput.addEventListener("input", updateAgeRules);
+
+    yearsInput.addEventListener("input", function () {
+        yearsValue.textContent = this.value;
+    });
+
+
+    updateAgeRules();
+
+
+    // ============================================================
+    // Účel hypotéky
+    // ============================================================
+
+    const purposeInput = document.getElementById("purpose");
+    const purposeInfo = document.getElementById("purposeInfo");
+
+
+    function updatePurposeInfo() {
+
+        if (purposeInput.value === "investment") {
+
+            purposeInfo.textContent =
+                "Investiční hypotéka: ČNB od 1. 4. 2026 doporučuje LTV max. 70 % a DTI max. 7.";
+
+        } else {
+
+            purposeInfo.textContent =
+                "Vlastní bydlení: LTV 80 %, nebo 90 % pro žadatele mladšího 36 let.";
+        }
+    }
+
+
+    purposeInput.addEventListener("change", updatePurposeInfo);
+
+    updatePurposeInfo();
+
+
+    // ============================================================
+    // Hlavní výpočet
+    // ============================================================
+
+    document
+        .getElementById("mortgageForm")
+        .addEventListener("submit", function (event) {
+
+            event.preventDefault();
+
+
+            const amount =
+                parseAmount(document.getElementById("amount").value);
+
+            const propertyValue =
+                parseAmount(document.getElementById("propertyValue").value);
+
+            const income =
+                parseAmount(document.getElementById("income").value);
+
+            const existingDebt =
+                parseAmount(document.getElementById("existingDebt").value);
+
+            const existingPayments =
+                parseAmount(document.getElementById("existingPayments").value);
+
+            const interest =
+                Number(document.getElementById("interest").value);
+
+            const age =
+                Number(document.getElementById("age").value);
+
+            const years =
+                Number(document.getElementById("years").value);
+
+            const purpose =
+                purposeInput.value;
+
+
+            // ----------------------------------------------------
+            // Validace
+            // ----------------------------------------------------
+
+            if (amount <= 0) {
+                alert("Zadejte platnou výši hypotéky.");
+                return;
+            }
+
+            if (propertyValue <= 0) {
+                alert("Zadejte platnou hodnotu nemovitosti.");
+                return;
+            }
+
+            if (income <= 0) {
+                alert("Zadejte čistý měsíční příjem domácnosti.");
+                return;
+            }
+
+            if (age < 18) {
+                alert("Věk žadatele musí být alespoň 18 let.");
+                return;
+            }
+
+            if (years <= 0) {
+                alert("Doba splácení musí být alespoň 1 rok.");
+                return;
+            }
+
+
+            // ----------------------------------------------------
+            // LTV
+            // ----------------------------------------------------
+
+            const ltv =
+                amount / propertyValue * 100;
+
+
+            let maxLtv;
+
+
+            if (purpose === "investment") {
+
+                // Investiční hypotéka
+                maxLtv = 70;
+
+            } else {
+
+                // Vlastní bydlení
+                maxLtv = age < 36 ? 90 : 80;
+            }
+
+
+            // ----------------------------------------------------
+            // DTI
+            // ----------------------------------------------------
+
+            const totalDebt =
+                existingDebt + amount;
+
+            const annualIncome =
+                income * 12;
+
+            const dti =
+                totalDebt / annualIncome;
+
+
+            let maxDti = null;
+
+
+            if (purpose === "investment") {
+
+                // ČNB doporučení pro investiční hypotéky
+                maxDti = 7;
+
+            } else {
+
+                /*
+                 * U vlastního bydlení není DTI aktuálně
+                 * závazným limitem.
+                 *
+                 * ČNB ale doporučuje zvýšenou obezřetnost
+                 * nad 8násobek ročního čistého příjmu.
+                 */
+
+                maxDti = 8;
+            }
+
+
+            // ----------------------------------------------------
+            // DSTI
+            // ----------------------------------------------------
+
+            const monthlyMortgagePayment =
+                calculateMortgage(
+                    amount,
+                    interest,
+                    years
+                );
+
+
+            const totalMonthlyDebtPayment =
+                monthlyMortgagePayment +
+                existingPayments;
+
+
+            const dsti =
+                totalMonthlyDebtPayment / income * 100;
+
+
+            // ČNB hranice zvýšené obezřetnosti
+            const maxDsti = 40;
+
+
+            // ----------------------------------------------------
+            // Maximální hypotéka podle LTV
+            // ----------------------------------------------------
+
+            const maxByLtv =
+                propertyValue * maxLtv / 100;
+
+
+            // ----------------------------------------------------
+            // Maximální hypotéka podle DTI
+            // ----------------------------------------------------
+
+            const maxTotalDebtByDti =
+                annualIncome * maxDti;
+
+            const maxByDti =
+                Math.max(
+                    0,
+                    maxTotalDebtByDti - existingDebt
+                );
+
+
+            // ----------------------------------------------------
+            // Maximální hypotéka podle DSTI
+            // ----------------------------------------------------
+
+            const maxMonthlyDebtPayment =
+                income * maxDsti / 100;
+
+            const maxMonthlyMortgagePayment =
+                maxMonthlyDebtPayment - existingPayments;
+
+
+            let maxByDsti = 0;
+
+
+            if (maxMonthlyMortgagePayment > 0) {
+
+                /*
+                 * Hledáme nejvyšší hypotéku,
+                 * jejíž splátka nepřekročí povolenou hodnotu.
+                 */
+
+                let low = 0;
+                let high = amount * 3;
+
+                for (let i = 0; i < 100; i++) {
+
+                    const mid =
+                        (low + high) / 2;
+
+                    const payment =
+                        calculateMortgage(
+                            mid,
+                            interest,
+                            years
+                        );
+
+                    if (payment <= maxMonthlyMortgagePayment) {
+                        low = mid;
+                    } else {
+                        high = mid;
+                    }
+                }
+
+                maxByDsti = low;
+            }
+
+
+            // ----------------------------------------------------
+            // Výpis výsledků
+            // ----------------------------------------------------
+
+            document.getElementById("resultAmount").textContent =
+                formatNumber(amount) + " Kč";
+
+            document.getElementById("resultProperty").textContent =
+                formatNumber(propertyValue) + " Kč";
+
+            document.getElementById("resultAge").textContent =
+                age + " let";
+
+            document.getElementById("resultYears").textContent =
+                years + " let";
+
+            document.getElementById("resultPayment").textContent =
+                formatNumber(monthlyMortgagePayment) + " Kč";
+
+
+            document.getElementById("resultLtv").textContent =
+                ltv.toFixed(1) + " %";
+
+            document.getElementById("resultMaxLtv").textContent =
+                maxLtv + " %";
+
+
+            document.getElementById("resultDti").textContent =
+                dti.toFixed(2);
+
+            document.getElementById("resultMaxDti").textContent =
+                maxDti + "×";
+
+
+            document.getElementById("resultDsti").textContent =
+                dsti.toFixed(1) + " %";
+
+
+            document.getElementById("maxByLtv").textContent =
+                formatNumber(maxByLtv) + " Kč";
+
+            document.getElementById("maxByDti").textContent =
+                formatNumber(maxByDti) + " Kč";
+
+            document.getElementById("maxByDsti").textContent =
+                formatNumber(maxByDsti) + " Kč";
+
+
+            // ----------------------------------------------------
+            // Vyhodnocení
+            // ----------------------------------------------------
+
+            const ltvOk =
+                ltv <= maxLtv;
+
+            const dtiOk =
+                dti <= maxDti;
+
+            const dstiOk =
+                dsti <= maxDsti;
+
+
+            const status =
+                document.getElementById("status");
+
+
+            let limitingFactors = [];
+
+
+            if (!ltvOk) {
+                limitingFactors.push("LTV");
+            }
+
+            if (!dtiOk) {
+                limitingFactors.push("DTI");
+            }
+
+            if (!dstiOk) {
+                limitingFactors.push("DSTI");
+            }
+
+
+            if (limitingFactors.length === 0) {
+
+                status.className =
+                    "status status-ok";
+
+                status.textContent =
+                    "✓ Hypotéka podle zadaných parametrů vychází. " +
+                    "Žádný ze sledovaných limitů není překročen.";
+
+            } else {
+
+                status.className =
+                    "status status-error";
+
+                status.innerHTML =
+                    "✗ Hypotéka podle zadaných parametrů nevychází.<br>" +
+                    "Limitující faktor: " +
+                    limitingFactors.join(", ");
+            }
+
+
+            document.getElementById("result").style.display =
+                "block";
+        });
+
+</script>
+
+</body>
+</html>
